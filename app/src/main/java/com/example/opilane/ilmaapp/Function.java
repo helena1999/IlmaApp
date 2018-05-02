@@ -2,13 +2,21 @@ package com.example.opilane.ilmaapp;
 
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.Toast;
 
+import org.apache.http.params.HttpConnectionParams;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * Created by opilane on 26.04.2018.
@@ -85,10 +93,13 @@ public class Function {
                     String humidity = main.getString("humidity") + "%";
                     String pressure = main.getString("pressure") + "hPa";
                     String updateOn = dateFormat.format(new Date(json.getLong("dt")*1000));
-                    String iconText = setWeatherIcon(details.getInt("id"), json.getJSONObject("sys"),getLong("sunset")*1000);
+                    String iconText = setWeatherIcon(details.getInt("id"), json.getJSONObject("sys").getLong("sunrise")*1000, json.getJSONObject("sys").getLong("sunset")*1000);
+
+                    delegate.processFinish(city, description, temperature, humidity, pressure, updateOn, iconText, "" + (json.getJSONObject("sys").getLong("sunrise")* 1000));
                 }
             }
             catch (JSONException e){
+                Log.e(TAG, "Ei saa JSON andmeid");
 
             }
             super.onPostExecute(json);
@@ -98,10 +109,25 @@ public class Function {
 
         try {
 
+            URL url = new URL(String.format(OPEN_WEATHER_MAP_URL, lat, lon));
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+            connection.addRequestProperty("x-api-key", OPEN_WEATHER_MAP_API);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuffer json = new StringBuffer(1024);
+            String tmp = "";
+            while ((tmp = reader.readLine()) !=null)json.append(tmp).append("\n");
+            reader.close();
+            JSONObject data = new JSONObject(json.toString());
+            if (data.getInt("cod") !=200){
+                return null;
+            }
+            return data;
+
         }
         catch (Exception e){
             return null;
         }
+
     }
 
 }
